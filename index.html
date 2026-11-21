@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Happy Birthday!</title>
+  <style>
+    :root {
+      --bg: #e6eaf0;
+      --shadow-dark: #c3c8d1;
+      --shadow-light: #ffffff;
+      --text: #4a5568;
+      --text-soft: #7a8496;
+      --blue: #57caff;
+      --green: #5cdb6d;
+      --yellow: #ffd427;
+      --pink: #ff7daf;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: var(--bg);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--text);
+    }
+
+    /* Confetti Canvas */
+    #confetti-canvas {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* Main Greeting Card (neomorphic, raised) */
+    .card {
+      position: relative;
+      z-index: 5;
+      text-align: center;
+      padding: 3rem 2.5rem;
+      background: var(--bg);
+      border-radius: 32px;
+      box-shadow:
+        14px 14px 30px var(--shadow-dark),
+        -14px -14px 30px var(--shadow-light);
+      max-width: 90%;
+      width: 460px;
+      animation: popIn 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    /* Accent dots (small inset wells) */
+    .dots {
+      display: flex;
+      justify-content: center;
+      gap: 14px;
+      margin-bottom: 1.6rem;
+    }
+
+    .dot {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--bg);
+      box-shadow:
+        inset 3px 3px 6px var(--shadow-dark),
+        inset -3px -3px 6px var(--shadow-light);
+      position: relative;
+    }
+
+    .dot::after {
+      content: '';
+      position: absolute;
+      inset: 4px;
+      border-radius: 50%;
+      background: var(--c);
+    }
+
+    h1 {
+      font-size: 2.6rem;
+      margin-bottom: 0.8rem;
+      overflow-wrap: anywhere;
+      background: linear-gradient(90deg, var(--blue), var(--green), var(--yellow), var(--pink), var(--blue));
+      background-size: 300%;
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: gradientShift 6s linear infinite;
+    }
+
+    p {
+      font-size: 1.1rem;
+      color: var(--text-soft);
+      margin: 0 auto 2.2rem;
+      line-height: 1.6;
+      padding: 1.1rem 1.3rem;
+      border-radius: 18px;
+      box-shadow:
+        inset 5px 5px 10px var(--shadow-dark),
+        inset -5px -5px 10px var(--shadow-light);
+    }
+
+    button {
+      padding: 0.9rem 2rem;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text);
+      background: var(--bg);
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      box-shadow:
+        7px 7px 15px var(--shadow-dark),
+        -7px -7px 15px var(--shadow-light);
+      border-bottom: 3px solid var(--pink);
+      transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.3s ease;
+    }
+
+    button:hover {
+      border-bottom-color: var(--blue);
+      transform: translateY(-2px);
+    }
+
+    button:active {
+      transform: translateY(0);
+      border-bottom-color: var(--green);
+      box-shadow:
+        inset 5px 5px 10px var(--shadow-dark),
+        inset -5px -5px 10px var(--shadow-light);
+    }
+
+    button:focus-visible {
+      outline: 3px solid var(--yellow);
+      outline-offset: 4px;
+    }
+
+    /* Stage: game on top, card below */
+    .stage {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 26px;
+      width: 100%;
+    }
+
+    /* Dino runner: just the game, no box, no border, fixed width */
+    .game {
+      position: relative;
+      z-index: 5;
+      width: 460px;
+      max-width: 90%;
+      animation: popIn 1s 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+    }
+
+    .game canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    /* "From" sign-off, bottom right */
+    .from {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      z-index: 6;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      padding: 10px 18px;
+      background: var(--bg);
+      border-radius: 24px;
+      box-shadow:
+        8px 8px 18px var(--shadow-dark),
+        -8px -8px 18px var(--shadow-light);
+    }
+
+    .from span {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-soft);
+      font-style: italic;
+    }
+
+    .from img {
+      display: block;
+      height: 50px;
+      width: auto;
+      border-radius: 5%;
+    }
+
+    @media (max-width: 520px) {
+      .from { right: 12px; bottom: 12px; padding: 14px 18px; gap: 12px; }
+      .from img { height: 24px; }
+    }
+
+    /* Floating Balloons (one batch, float up once) */
+    .balloon {
+      position: fixed;
+      bottom: -120px;
+      width: 55px;
+      height: 68px;
+      border-radius: 50% 50% 50% 50% / 45% 45% 55% 55%;
+      z-index: 2;
+      background-image: radial-gradient(circle at 32% 28%, rgba(255,255,255,0.65), rgba(255,255,255,0) 45%);
+      box-shadow:
+        5px 5px 12px rgba(0, 0, 0, 0.14),
+        -4px -4px 10px rgba(255, 255, 255, 0.7);
+      animation: floatUp linear 1 forwards;
+    }
+
+    .balloon::after {
+      content: '';
+      position: absolute;
+      bottom: -18px;
+      left: 50%;
+      width: 2px;
+      height: 20px;
+      background: rgba(74, 85, 104, 0.35);
+      transform: translateX(-50%);
+    }
+
+    @keyframes popIn {
+      0% { opacity: 0; transform: scale(0.7) translateY(30px); }
+      100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      100% { background-position: 300% 50%; }
+    }
+
+    @keyframes floatUp {
+      0% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-65vh) rotate(6deg); }
+      100% { transform: translateY(-130vh) rotate(-6deg); }
+    }
+
+    /* Short screens: tighten things so game + card both fit */
+    @media (max-height: 780px) {
+      .stage { gap: 18px; }
+      .card { padding: 1.6rem 2rem; }
+      .dots { margin-bottom: 1rem; }
+      h1 { font-size: 2.1rem; margin-bottom: 0.6rem; }
+      p { font-size: 1rem; padding: 0.8rem 1rem; margin-bottom: 1.4rem; }
+    }
+
+    @media (max-height: 620px) {
+      .stage { gap: 12px; }
+      .card { padding: 1.1rem 1.5rem; }
+      .dots { margin-bottom: 0.6rem; }
+      h1 { font-size: 1.7rem; }
+      p { font-size: 0.9rem; padding: 0.6rem 0.8rem; margin-bottom: 1rem; }
+      button { padding: 0.6rem 1.4rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="confetti-canvas"></canvas>
+
+  <div class="stage">
+  <section class="game" aria-label="Dino runner mini game">
+      <canvas id="dino-canvas" width="600" height="160"></canvas>
+    </section>
+
+  <div class="card">
+    <div class="dots">
+      <span class="dot" style="--c:#57caff"></span>
+      <span class="dot" style="--c:#5cdb6d"></span>
+      <span class="dot" style="--c:#ffd427"></span>
+      <span class="dot" style="--c:#ff7daf"></span>
+    </div>
+    <h1 id="greeting">Happy Birthday! 🎉</h1>
+    <p>Wishing you a day filled with joy, laughter, and unforgettable memories.</p>
+    <button id="celebrate-btn">Launch Confetti 🎊</button>
+  </div>
+  </div>
+
+  <div class="from">
+    <span>from</span>
+    <img src="https://raw.githubusercontent.com/GDGoC-USM/PMD-repository/refs/heads/main/VectorLogoGDG-container.png" alt="Google Developer Group Universiti Sains Malaysia" />
+  </div>
+
+  <script>
+
+    // 0. Personalised greeting: page.html?name=Aisyah
+    (function () {
+      let name = '';
+      try { name = (new URLSearchParams(location.search).get('name') || '').trim().slice(0, 40); } catch (e) {}
+      if (!name) return;
+      document.getElementById('greeting').textContent = 'Happy Birthday, ' + name + '! \uD83C\uDF89';
+      document.title = 'Happy Birthday, ' + name + '!';
+    })();
+
+    const accents = ['#57caff', '#5cdb6d', '#ffd427', '#ff7daf'];
+
+    // 1. One batch of balloons at the start; each is removed once it has floated away
+    for (let i = 0; i < 14; i++) {
+      const balloon = document.createElement('div');
+      balloon.className = 'balloon';
+      balloon.style.left = `${Math.random() * 92}vw`;
+      balloon.style.backgroundColor = accents[i % accents.length];
+      balloon.style.animationDuration = `${7 + Math.random() * 6}s`;
+      balloon.style.animationDelay = `${Math.random() * 1.5}s`;
+      balloon.addEventListener('animationend', () => balloon.remove());
+      document.body.appendChild(balloon);
+    }
+
+    // 2. Confetti Particle System
+    const canvas = document.getElementById('confetti-canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    window.addEventListener('resize', () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    });
+
+    let particles = [];
+
+    function createBurst(x, y) {
+      for (let i = 0; i < 90; i++) {
+        particles.push({
+          x,
+          y,
+          vx: (Math.random() - 0.5) * 14,
+          vy: (Math.random() - 0.7) * 14,
+          size: Math.random() * 7 + 4,
+          color: accents[Math.floor(Math.random() * accents.length)],
+          rotation: Math.random() * 360,
+          rotationSpeed: (Math.random() - 0.5) * 10
+        });
+      }
+    }
+
+    // Random position, kept away from the very edges
+    function randomBurst() {
+      const x = window.innerWidth * (0.1 + Math.random() * 0.8);
+      const y = window.innerHeight * (0.15 + Math.random() * 0.7);
+      createBurst(x, y);
+    }
+
+    function animateConfetti() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.25; // gravity
+        p.rotation += p.rotationSpeed;
+
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate((p.rotation * Math.PI) / 180);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+        ctx.restore();
+
+        if (p.y > canvas.height + 20) {
+          particles.splice(i, 1);
+        }
+      }
+      requestAnimationFrame(animateConfetti);
+    }
+
+    animateConfetti();
+
+    // Launch confetti on load and button click, at random positions
+    window.addEventListener('load', randomBurst);
+    document.getElementById('celebrate-btn').addEventListener('click', randomBurst);
+
+    // 3. Dino runner mini game (press the Up arrow to jump)
+    (function () {
+      const cv = document.getElementById('dino-canvas');
+      const g = cv.getContext('2d');
+      const W = cv.width, H = cv.height;
+      const GROUND = H - 30;
+      const INK = '#7a8496';
+      const DARK = '#4a5568';
+      const GRAVITY = 0.6;
+      const JUMP_V = -10.2;
+      const FONT = '"Segoe UI", Tahoma, Verdana, sans-serif';
+
+      let state = 'ready'; // ready | running | over
+      let dino, obstacles, speed, score, countdown, frame;
+      let hi = 0;
+      let last = 0;
+      let overAt = 0;
+
+      const pebbles = Array.from({ length: 22 }, () => ({
+        x: Math.random() * W,
+        y: GROUND + 8 + Math.random() * 14,
+        w: 2 + Math.random() * 5
+      }));
+      const clouds = Array.from({ length: 3 }, (_, i) => ({
+        x: i * 220 + Math.random() * 120,
+        y: 24 + Math.random() * 30,
+        w: 46 + Math.random() * 30
+      }));
+
+      function reset() {
+        dino = { x: 56, y: GROUND - 42, w: 48, h: 42, vy: 0 };
+        obstacles = [];
+        speed = 6;
+        score = 0;
+        frame = 0;
+        countdown = 60;
+      }
+
+      function onGround() {
+        return dino.y >= GROUND - dino.h - 0.5;
+      }
+
+      function jump() {
+        if (onGround()) dino.vy = JUMP_V;
+      }
+
+      function press() {
+        if (state === 'ready') {
+          state = 'running';
+          jump();
+        } else if (state === 'running') {
+          jump();
+        } else if (state === 'over' && performance.now() - overAt > 350) {
+          reset();
+          state = 'running';
+          jump();
+        }
+      }
+
+      function spawn() {
+        const count = score > 150 && Math.random() < 0.3 ? 2 : 1;
+        const h = 32 + Math.floor(Math.random() * 15);
+        const o = { x: W + 10, y: GROUND - h, w: count * 26, h, count };
+        obstacles.push(o);
+        countdown = o.w + 240 + speed * 22 + Math.random() * 220;
+      }
+
+      function hits(a, b) {
+        return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+      }
+
+      function update(dt) {
+        frame += dt;
+        speed = Math.min(13, speed + 0.0022 * dt);
+        score += speed * 0.04 * dt;
+
+        dino.vy += GRAVITY * dt;
+        dino.y += dino.vy * dt;
+        if (dino.y >= GROUND - dino.h) {
+          dino.y = GROUND - dino.h;
+          dino.vy = 0;
+        }
+
+        obstacles.forEach(o => { o.x -= speed * dt; });
+        obstacles = obstacles.filter(o => o.x + o.w > -10);
+        countdown -= speed * dt;
+        if (countdown <= 0) spawn();
+
+        pebbles.forEach(p => {
+          p.x -= speed * dt;
+          if (p.x < -10) p.x += W + 20;
+        });
+        clouds.forEach(c => {
+          c.x -= speed * 0.25 * dt;
+          if (c.x + c.w < 0) {
+            c.x = W + Math.random() * 100;
+            c.y = 24 + Math.random() * 30;
+          }
+        });
+
+        const box = { x: dino.x + 6, y: dino.y + 4, w: dino.w - 12, h: dino.h - 6 };
+        for (const o of obstacles) {
+          if (hits(box, { x: o.x + 3, y: o.y + 3, w: o.w - 6, h: o.h - 3 })) {
+            state = 'over';
+            overAt = performance.now();
+            hi = Math.max(hi, Math.floor(score));
+            break;
+          }
+        }
+      }
+
+      // Original pixel-art calico cat (K black, W white, G grey, O orange)
+      const CAT = [
+        'KK.....KK.....KK',
+        'KK.....KGGK..KOK',
+        'KGK....KGGGWWWOK',
+        'KGK....KWWWWWWWK',
+        'KWK....KWKWWWKWK',
+        'KWK.....KWWWWWK.',
+        '.KKKKKKKKKKKKKK.',
+        '.KOOWGWWWGGWK...',
+        '.KOWWWWWWWWWK...',
+        '.KWWGGGWWWWWK...',
+        '..KKKKKKKKKK....'
+      ];
+      const CAT_COLORS = { K: '#1a1a1a', W: '#ffffff', G: '#868b91', O: '#ff9a00' };
+      const PX = 3;
+      const LEG_X = [6, 15, 24, 31];
+
+      function drawDino() {
+        const x = dino.x, y = dino.y;
+        const running = state === 'running' && onGround();
+        const phase = Math.floor(frame / 6) % 2 === 0;
+
+        // legs (drawn first so the body overlaps their tops)
+        for (let i = 0; i < 4; i++) {
+          const short = running && ((i % 2 === 0) === phase);
+          const h = short ? 6 : 9;
+          const lx = x + LEG_X[i], ly = y + CAT.length * PX - 1;
+          g.fillStyle = CAT_COLORS.K;
+          g.fillRect(lx, ly, 3, h);
+          g.fillStyle = CAT_COLORS.W;
+          g.fillRect(lx + 3, ly, 3, h - 3);
+          g.fillStyle = CAT_COLORS.K;
+          g.fillRect(lx + 3, ly + h - 3, 3, 3);
+        }
+
+        // body + head
+        for (let r = 0; r < CAT.length; r++) {
+          for (let c = 0; c < CAT[r].length; c++) {
+            const ch = CAT[r][c];
+            if (ch === '.') continue;
+            g.fillStyle = CAT_COLORS[ch];
+            g.fillRect(x + c * PX, y + r * PX, PX, PX);
+          }
+        }
+
+        if (state === 'over') {
+          // X eyes
+          g.fillStyle = CAT_COLORS.W;
+          g.fillRect(x + 9 * PX, y + 4 * PX, PX, PX);
+          g.fillRect(x + 13 * PX, y + 4 * PX, PX, PX);
+          g.strokeStyle = CAT_COLORS.K;
+          g.lineWidth = 1.5;
+          g.beginPath();
+          [9, 13].forEach(c => {
+            const ex = x + c * PX, ey = y + 4 * PX;
+            g.moveTo(ex, ey); g.lineTo(ex + PX, ey + PX);
+            g.moveTo(ex + PX, ey); g.lineTo(ex, ey + PX);
+          });
+          g.stroke();
+        }
+      }
+
+      function drawCactus(o) {
+        for (let i = 0; i < o.count; i++) {
+          const cx = o.x + i * 26;
+          const sx = cx + 7;
+          g.fillStyle = '#545454';
+          g.fillRect(sx, o.y, 12, o.h);                              // stem
+          g.fillRect(cx, o.y + o.h * 0.35, 7, 5);                    // left arm
+          g.fillRect(cx, o.y + o.h * 0.35 - 10, 5, 15);
+          g.fillRect(sx + 12, o.y + o.h * 0.5, 7, 5);                // right arm
+          g.fillRect(sx + 14, o.y + o.h * 0.5 - 9, 5, 14);
+          g.fillRect(sx + 4, o.y - 4, 4, 4);                         // top bump
+        }
+      }
+
+      function render() {
+        g.clearRect(0, 0, W, H);
+
+        g.fillStyle = 'rgba(195, 200, 209, 0.55)';
+        clouds.forEach(c => {
+          g.fillRect(c.x, c.y, c.w, 8);
+          g.fillRect(c.x + 8, c.y - 6, c.w * 0.5, 6);
+        });
+
+        g.fillStyle = INK;
+        g.fillRect(0, GROUND, W, 2);
+        g.globalAlpha = 0.5;
+        pebbles.forEach(p => g.fillRect(p.x, p.y, p.w, 2));
+        g.globalAlpha = 1;
+
+        obstacles.forEach(drawCactus);
+        drawDino();
+
+        const pad = n => String(Math.floor(n)).padStart(5, '0');
+        g.font = '700 15px ' + FONT;
+        g.textAlign = 'right';
+        g.fillStyle = INK;
+        g.fillText((hi ? 'HI ' + pad(hi) + '   ' : '') + pad(score), W - 14, 24);
+
+        if (state !== 'running') {
+          g.textAlign = 'center';
+          g.fillStyle = DARK;
+          g.font = '700 18px ' + FONT;
+          g.fillText(state === 'ready' ? 'Press ↑ to start' : 'Game over', W / 2, 56);
+          if (state === 'over') {
+            g.fillStyle = INK;
+            g.font = '600 13px ' + FONT;
+            g.fillText('Press ↑ to try again', W / 2, 76);
+          }
+        }
+      }
+
+      function loop(ts) {
+        const dt = Math.min(3, (ts - last) / 16.667 || 1);
+        last = ts;
+        if (state === 'running') update(dt);
+        render();
+        requestAnimationFrame(loop);
+      }
+
+      window.addEventListener('keydown', e => {
+        if (e.key === 'ArrowUp' || e.code === 'ArrowUp') {
+          e.preventDefault();
+          if (e.repeat && state !== 'running') return;
+          press();
+        }
+      });
+      cv.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        press();
+      });
+
+      reset();
+      requestAnimationFrame(loop);
+    })();
+  </script>
+</body>
+</html>
